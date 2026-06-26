@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoPDF - Sistema de Firma Digital</title>
+    <meta name="description" content="Firme y verifique documentos PDF de forma segura usando criptografía asimétrica RSA con Flask y cryptography.">
+    <!-- Boxicons para íconos premium -->
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <!-- CSS personalizado -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <!-- Header de la aplicación -->
+    <header>
+        <div class="logo-container">
+            <i class="bx bx-shield-quarter logo-icon"></i>
+            <h1>CryptoPDF</h1>
+        </div>
+        <p>Sistema de Firma Digital y Autenticidad de Documentos PDF</p>
+    </header>
+
+    <!-- Main Content -->
+    <main>
+        <!-- Pestañas de Navegación -->
+        <div class="tabs-container">
+            <button class="tab-btn active" id="tab-sign-btn" onclick="switchTab('sign')">
+                <i class="bx bx-edit-alt"></i> Firmar PDF
+            </button>
+            <button class="tab-btn" id="tab-verify-btn" onclick="switchTab('verify')">
+                <i class="bx bx-check-shield"></i> Verificar Firma
+            </button>
+        </div>
+
+        <!-- Módulo 1: Firmar PDF -->
+        <div class="panel-card active" id="panel-sign">
+            <h2 style="margin-bottom: 1.5rem; font-size: 1.3rem; font-weight: 700;">Módulo de Firmado</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem; line-height: 1.5;">
+                Seleccione un documento PDF. El sistema calculará el hash SHA-256 de su contenido y lo firmará utilizando la clave privada RSA generada en el servidor. Obtendrá un archivo de firma digital descargable.
+            </p>
+
+            <form id="sign-form" onsubmit="handleSign(event)">
+                <!-- Drop Zone para PDF -->
+                <div class="drop-zone" id="sign-dropzone" onclick="document.getElementById('sign-pdf-input').click()">
+                    <i class="bx bxs-file-pdf drop-zone-icon"></i>
+                    <p>Arrastra tu PDF aquí o haz clic para buscar</p>
+                    <span class="file-spec">Solo archivos PDF (.pdf)</span>
+                    <input type="file" id="sign-pdf-input" class="file-input" accept="application/pdf" onchange="handleFileSelect(this, 'sign-file-info')">
+                </div>
+
+                <!-- Info de Archivo Seleccionado -->
+                <div class="selected-file-info" id="sign-file-info">
+                    <i class="bx bxs-file-pdf file-icon"></i>
+                    <div class="file-details">
+                        <div class="file-name" id="sign-file-name">documento.pdf</div>
+                        <div class="file-size" id="sign-file-size">0 KB</div>
+                    </div>
+                    <button type="button" class="remove-file-btn" onclick="clearSelectedFile('sign-pdf-input', 'sign-file-info')">
+                        <i class="bx bx-x"></i>
+                    </button>
+                </div>
+
+                <!-- Botón de Envío -->
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary" id="sign-submit-btn" disabled>
+                        <i class="bx bx-key"></i>
+                        <span>Generar Firma Digital</span>
+                        <div class="spinner" id="sign-spinner"></div>
+                    </button>
+                </div>
+            </form>
+
+            <!-- Panel de Resultados -->
+            <div class="result-box" id="sign-result">
+                <div class="result-header">
+                    <i class="bx bx-receipt text-primary"></i> Resultado de Firma
+                </div>
+                <div class="result-status success">
+                    <i class="bx bx-check-circle result-icon"></i>
+                    <span>¡Documento firmado digitalmente con éxito!</span>
+                </div>
+                
+                <div class="result-content-layout">
+                    <div class="result-details">
+                        <div class="hash-label">ID de Documento</div>
+                        <div class="id-container" id="sign-doc-id" style="margin-bottom: 1rem; font-size: 0.85rem; color: #a5b4fc; font-weight: 500; font-family: monospace; word-break: break-all;">-</div>
+
+                        <div class="hash-label">Hash SHA-256 del PDF</div>
+                        <div class="hash-container" id="sign-hash-text" style="margin-bottom: 1.5rem;">
+                            -
+                            <button class="copy-hash-btn" onclick="copyText('sign-hash-text')">Copiar</button>
+                        </div>
+
+                        <div class="download-sig-section" style="text-align: left; display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                            <button class="btn-secondary" id="download-sig-btn">
+                                <i class="bx bx-download"></i> Descargar Firma (.sig)
+                            </button>
+                            <a href="#" class="btn-secondary" id="verify-public-link" target="_blank" style="border-color: var(--success); color: var(--text-primary);">
+                                <i class="bx bx-link-external"></i> Verificación Pública
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="qr-container">
+                        <div class="hash-label" style="text-align: center; margin-bottom: 0.5rem;">Código QR de Verificación</div>
+                        <div style="background: white; padding: 12px; border-radius: var(--radius-md); display: inline-block;">
+                            <img id="sign-qr-img" src="" alt="Código QR de Verificación" style="width: 140px; height: 140px; display: block;">
+                        </div>
+                        <div style="margin-top: 0.5rem; text-align: center; width: 100%;">
+                            <button type="button" class="copy-hash-btn" style="position: static; transform: none; display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem; padding: 0.4rem 0.8rem;" id="download-qr-btn">
+                                <i class="bx bx-download"></i> Guardar QR
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Módulo 2: Verificar Firma -->
+        <div class="panel-card" id="panel-verify">
+            <h2 style="margin-bottom: 1.5rem; font-size: 1.3rem; font-weight: 700;">Módulo de Verificación</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem; line-height: 1.5;">
+                Suba el documento PDF original junto con su firma digital descargada previamente (`.sig`). El sistema recalculará el hash SHA-256 del documento y verificará su autenticidad utilizando la clave pública correspondiente.
+            </p>
+
+            <form id="verify-form" onsubmit="handleVerify(event)">
+                <!-- Grid de Archivos para Verificación -->
+                <div style="display: grid; grid-template-columns: 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <!-- PDF original -->
+                    <div>
+                        <div class="drop-zone" id="verify-pdf-dropzone" onclick="document.getElementById('verify-pdf-input').click()">
+                            <i class="bx bxs-file-pdf drop-zone-icon"></i>
+                            <p>PDF Original</p>
+                            <span class="file-spec">Arrastra o haz clic aquí</span>
+                            <input type="file" id="verify-pdf-input" class="file-input" accept="application/pdf" onchange="handleFileSelect(this, 'verify-pdf-info')">
+                        </div>
+                        <div class="selected-file-info" id="verify-pdf-info">
+                            <i class="bx bxs-file-pdf file-icon"></i>
+                            <div class="file-details">
+                                <div class="file-name" id="verify-pdf-name">documento.pdf</div>
+                                <div class="file-size" id="verify-pdf-size">0 KB</div>
+                            </div>
+                            <button type="button" class="remove-file-btn" onclick="clearSelectedFile('verify-pdf-input', 'verify-pdf-info')">
+                                <i class="bx bx-x"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Archivo de firma -->
+                    <div>
+                        <div class="drop-zone" id="verify-sig-dropzone" onclick="document.getElementById('verify-sig-input').click()">
+                            <i class="bx bx-signature drop-zone-icon" style="color: #a5b4fc;"></i>
+                            <p>Archivo de Firma (.sig)</p>
+                            <span class="file-spec">Arrastra o haz clic aquí</span>
+                            <input type="file" id="verify-sig-input" class="file-input" accept=".sig" onchange="handleFileSelect(this, 'verify-sig-info')">
+                        </div>
+                        <div class="selected-file-info" id="verify-sig-info">
+                            <i class="bx bx-signature file-icon" style="color: #a5b4fc;"></i>
+                            <div class="file-details">
+                                <div class="file-name" id="verify-sig-name">firma.sig</div>
+                                <div class="file-size" id="verify-sig-size">0 KB</div>
+                            </div>
+                            <button type="button" class="remove-file-btn" onclick="clearSelectedFile('verify-sig-input', 'verify-sig-info')">
+                                <i class="bx bx-x"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botón de Envío -->
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary" id="verify-submit-btn" disabled>
+                        <i class="bx bx-check-shield"></i>
+                        <span>Verificar Firma Digital</span>
+                        <div class="spinner" id="verify-spinner"></div>
+                    </button>
+                </div>
+            </form>
+
+            <!-- Panel de Resultados -->
+            <div class="result-box" id="verify-result">
+                <div class="result-header">
+                    <i class="bx bx-analyse text-primary"></i> Resultado de la Verificación
+                </div>
+                <div class="result-status" id="verify-status-alert">
+                    <i class="bx result-icon" id="verify-status-icon"></i>
+                    <span id="verify-status-message">-</span>
+                </div>
+                
+                <div class="hash-label">Hash SHA-256 Recalculado</div>
+                <div class="hash-container" id="verify-hash-text">
+                    -
+                    <button class="copy-hash-btn" onclick="copyText('verify-hash-text')">Copiar</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2026 CryptoPDF. Desarrollado como material académico en Ciberseguridad.</p>
+    </footer>
+
+    <!-- Script de lógica de UI interactiva -->
+    <script>
+        // Navegación entre pestañas
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.panel-card').forEach(panel => panel.classList.remove('active'));
+
+            if (tab === 'sign') {
+                document.getElementById('tab-sign-btn').classList.add('active');
+                document.getElementById('panel-sign').classList.add('active');
+            } else {
+                document.getElementById('tab-verify-btn').classList.add('active');
+                document.getElementById('panel-verify').classList.add('active');
+            }
+        }
+
+        // Formatear tamaño del archivo
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
+        // Manejo de drag and drop para todas las drop-zones
+        const dropZones = [
+            { id: 'sign-dropzone', inputId: 'sign-pdf-input', infoId: 'sign-file-info' },
+            { id: 'verify-pdf-dropzone', inputId: 'verify-pdf-input', infoId: 'verify-pdf-info' },
+            { id: 'verify-sig-dropzone', inputId: 'verify-sig-input', infoId: 'verify-sig-info' }
+        ];
+
+        dropZones.forEach(zone => {
+            const el = document.getElementById(zone.id);
+            const input = document.getElementById(zone.inputId);
+
+            if (!el) return;
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                el.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    el.classList.add('dragover');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                el.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    el.classList.remove('dragover');
+                }, false);
+            });
+
+            el.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files.length > 0) {
+                    input.files = files;
+                    handleFileSelect(input, zone.infoId);
+                }
+            }, false);
+        });
+
+        // Manejar selección de archivo
+        function handleFileSelect(input, infoId) {
+            const infoEl = document.getElementById(infoId);
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                
+                // Si es input de pdf, validar extensión
+                if (input.accept === 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+                    alert('Por favor, selecciona únicamente un archivo PDF.');
+                    clearSelectedFile(input.id, infoId);
+                    return;
+                }
+
+                // Mostrar info del archivo en la UI
+                infoEl.querySelector('.file-name').innerText = file.name;
+                infoEl.querySelector('.file-size').innerText = formatBytes(file.size);
+                infoEl.classList.add('active');
+            } else {
+                infoEl.classList.remove('active');
+            }
+            updateSubmitButtonsState();
+        }
+
+        // Limpiar archivo seleccionado
+        function clearSelectedFile(inputId, infoId) {
+            const input = document.getElementById(inputId);
+            input.value = '';
+            document.getElementById(infoId).classList.remove('active');
+            updateSubmitButtonsState();
+            
+            // Ocultar resultados cuando se remueve el archivo para evitar confusiones
+            if (inputId === 'sign-pdf-input') {
+                document.getElementById('sign-result').classList.remove('active');
+            } else {
+                document.getElementById('verify-result').classList.remove('active');
+            }
+        }
+
+        // Habilitar o deshabilitar botones según archivos cargados
+        function updateSubmitButtonsState() {
+            const signPdf = document.getElementById('sign-pdf-input').files[0];
+            document.getElementById('sign-submit-btn').disabled = !signPdf;
+
+            const verifyPdf = document.getElementById('verify-pdf-input').files[0];
+            const verifySig = document.getElementById('verify-sig-input').files[0];
+            document.getElementById('verify-submit-btn').disabled = !(verifyPdf && verifySig);
+        }
+
+        // Copiar hash al portapapeles
+        function copyText(elementId) {
+            const textEl = document.getElementById(elementId);
+            // Obtener el texto limpio sin el botón "Copiar"
+            const textToCopy = textEl.firstChild.textContent.trim();
+            
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                const copyBtn = textEl.querySelector('.copy-hash-btn');
+                const origText = copyBtn.innerText;
+                copyBtn.innerText = 'Copiado!';
+                setTimeout(() => {
+                    copyBtn.innerText = origText;
+                }, 2000);
+            }).catch(err => {
+                console.error('Error al copiar el texto: ', err);
+            });
+        }
+
+        // Descarga de archivo Base64
+        function downloadBase64File(base64Data, filename) {
+            const binaryString = window.atob(base64Data);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            const blob = new Blob([bytes], {type: "application/octet-stream"});
+            const link = document.createElement('a');
+            link.href = window.URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Lógica de Firmado Async (POST /sign)
+        function handleSign(event) {
+            event.preventDefault();
+            const fileInput = document.getElementById('sign-pdf-input');
+            if (!fileInput.files || fileInput.files.length === 0) return;
+
+            const formData = new FormData();
+            formData.append('pdf_file', fileInput.files[0]);
+
+            // UI Loading state
+            const submitBtn = document.getElementById('sign-submit-btn');
+            const spinner = document.getElementById('sign-spinner');
+            submitBtn.disabled = true;
+            spinner.style.display = 'inline-block';
+            document.getElementById('sign-result').classList.remove('active');
+
+            fetch('/sign', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    // Cargar ID del documento
+                    document.getElementById('sign-doc-id').innerText = data.doc_id;
+
+                    // Cargar Hash
+                    const hashContainer = document.getElementById('sign-hash-text');
+                    hashContainer.innerHTML = data.hash + ' <button class="copy-hash-btn" onclick="copyText(\'sign-hash-text\')">Copiar</button>';
+                    
+                    // Configurar acción del botón de descarga
+                    const downloadBtn = document.getElementById('download-sig-btn');
+                    downloadBtn.onclick = () => {
+                        downloadBase64File(data.signature_base64, data.filename);
+                    };
+
+                    // Configurar enlace de verificación pública
+                    const publicLink = document.getElementById('verify-public-link');
+                    publicLink.href = data.verification_url;
+
+                    // Cargar imagen del QR
+                    const qrImg = document.getElementById('sign-qr-img');
+                    qrImg.src = 'data:image/png;base64,' + data.qr_base64;
+
+                    // Configurar descarga del QR
+                    const downloadQrBtn = document.getElementById('download-qr-btn');
+                    downloadQrBtn.onclick = () => {
+                        downloadBase64File(data.qr_base64, `qr_${data.doc_id}.png`);
+                    };
+
+                    // Mostrar resultado
+                    document.getElementById('sign-result').classList.add('active');
+                } else {
+                    alert('Error en firma: ' + (data.error || 'Error desconocido'));
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Ocurrió un error al procesar el archivo en el servidor.');
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+                spinner.style.display = 'none';
+            });
+        }
+
+        // Lógica de Verificación Async (POST /verify)
+        function handleVerify(event) {
+            event.preventDefault();
+            const pdfInput = document.getElementById('verify-pdf-input');
+            const sigInput = document.getElementById('verify-sig-input');
+            
+            if (!pdfInput.files[0] || !sigInput.files[0]) return;
+
+            const formData = new FormData();
+            formData.append('pdf_file', pdfInput.files[0]);
+            formData.append('signature_file', sigInput.files[0]);
+
+            // UI Loading state
+            const submitBtn = document.getElementById('verify-submit-btn');
+            const spinner = document.getElementById('verify-spinner');
+            submitBtn.disabled = true;
+            spinner.style.display = 'inline-block';
+            document.getElementById('verify-result').classList.remove('active');
+
+            fetch('/verify', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const alertEl = document.getElementById('verify-status-alert');
+                    const iconEl = document.getElementById('verify-status-icon');
+                    const msgEl = document.getElementById('verify-status-message');
+                    
+                    // Configurar alerta de estado
+                    if (data.valid) {
+                        alertEl.className = 'result-status success';
+                        iconEl.className = 'bx bx-check-circle result-icon';
+                    } else {
+                        alertEl.className = 'result-status danger';
+                        iconEl.className = 'bx bx-error-circle result-icon';
+                    }
+                    
+                    msgEl.innerText = data.message;
+
+                    // Mostrar hash recalculado
+                    const hashContainer = document.getElementById('verify-hash-text');
+                    hashContainer.innerHTML = data.hash + ' <button class="copy-hash-btn" onclick="copyText(\'verify-hash-text\')">Copiar</button>';
+                    
+                    // Mostrar resultado
+                    document.getElementById('verify-result').classList.add('active');
+                } else {
+                    alert('Error en verificación: ' + (data.error || 'Error desconocido'));
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Ocurrió un error al procesar la verificación en el servidor.');
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+                spinner.style.display = 'none';
+            });
+        }
+    </script>
+</body>
+</html>

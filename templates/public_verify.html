@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoPDF - Verificación Pública</title>
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <!-- Header de la aplicación -->
+    <header>
+        <div class="logo-container">
+            <i class="bx bx-shield-quarter logo-icon"></i>
+            <h1>CryptoPDF</h1>
+        </div>
+        <p>Servicio Público de Verificación de Autenticidad</p>
+    </header>
+
+    <!-- Main Content -->
+    <main>
+        <div class="panel-card active" style="max-width: 600px; margin: 0 auto;">
+            {% if found %}
+                <!-- Caso: Encontrado y Válido -->
+                <div style="text-align: center; margin-bottom: 2rem;">
+                    <div style="width: 80px; height: 80px; background: var(--success-glow); border: 2px solid var(--success); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; animation: pulseSuccess 2s infinite alternate;">
+                        <i class="bx bx-check-shield" style="font-size: 3rem; color: var(--success);"></i>
+                    </div>
+                    <h2 style="font-size: 1.6rem; font-weight: 800; color: var(--success);">✓ Documento Verificado</h2>
+                    <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.95rem;">
+                        Este documento ha sido registrado y firmado digitalmente de forma correcta en el servidor de CryptoPDF.
+                    </p>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+                    <!-- Detalle del Registro -->
+                    <div class="meta-field">
+                        <div class="hash-label">ID de Documento</div>
+                        <div class="meta-value">{{ doc_id }}</div>
+                    </div>
+
+                    <div class="meta-field">
+                        <div class="hash-label">Nombre del Archivo Original</div>
+                        <div class="meta-value" style="font-weight: 600; color: white;">
+                            <i class="bx bxs-file-pdf" style="color: var(--primary); margin-right: 0.25rem;"></i> {{ filename }}
+                        </div>
+                    </div>
+
+                    <div class="meta-field">
+                        <div class="hash-label">Fecha y Hora de Firma</div>
+                        <div class="meta-value">
+                            <i class="bx bx-calendar" style="color: var(--text-muted); margin-right: 0.25rem;"></i> {{ date }}
+                        </div>
+                    </div>
+
+                    <div class="meta-field">
+                        <div class="hash-label">Hash SHA-256 Registrado</div>
+                        <div class="hash-container" id="public-hash-text">
+                            {{ hash }}
+                            <button class="copy-hash-btn" onclick="copyText('public-hash-text')">Copiar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 2rem; border-top: 1px solid var(--card-border); padding-top: 1.5rem; font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; text-align: center;">
+                    <i class="bx bx-info-circle"></i> La firma criptográfica RSA-PSS vinculada a este registro garantiza que el PDF no ha sido modificado desde la fecha indicada.
+                </div>
+            {% else %}
+                <!-- Caso: No Encontrado o Inválido -->
+                <div style="text-align: center; margin-bottom: 2rem;">
+                    <div style="width: 80px; height: 80px; background: var(--danger-glow); border: 2px solid var(--danger); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+                        <i class="bx bx-error-alt" style="font-size: 3rem; color: var(--danger);"></i>
+                    </div>
+                    <h2 style="font-size: 1.6rem; font-weight: 800; color: var(--danger);">✗ Firma / ID No Registrado</h2>
+                    <p style="color: var(--text-secondary); margin-top: 0.5rem; font-size: 0.95rem;">
+                        El identificador proporcionado no coincide con ningún documento firmado en nuestra base de datos.
+                    </p>
+                </div>
+
+                <div class="result-status danger" style="margin-bottom: 1.5rem;">
+                    <i class="bx bx-x-circle result-icon"></i>
+                    <span><strong>Advertencia:</strong> Este documento podría haber sido modificado, su firma fue revocada, o no fue firmado en este servidor.</span>
+                </div>
+
+                <div class="meta-field">
+                    <div class="hash-label">ID Buscado</div>
+                    <div class="meta-value" style="font-family: monospace; font-size: 0.85rem; color: #fb7185;">{{ doc_id }}</div>
+                </div>
+            {% endif %}
+
+            <div class="form-actions" style="margin-top: 2.5rem;">
+                <a href="/" class="btn-primary" style="text-decoration: none;">
+                    <i class="bx bx-home-alt"></i> Volver al Portal de Firmas
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2026 CryptoPDF. Desarrollado como material académico en Ciberseguridad.</p>
+    </footer>
+
+    <script>
+        function copyText(elementId) {
+            const textEl = document.getElementById(elementId);
+            const textToCopy = textEl.firstChild.textContent.trim();
+            
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                const copyBtn = textEl.querySelector('.copy-hash-btn');
+                const origText = copyBtn.innerText;
+                copyBtn.innerText = 'Copiado!';
+                setTimeout(() => {
+                    copyBtn.innerText = origText;
+                }, 2000);
+            }).catch(err => {
+                console.error('Error al copiar: ', err);
+            });
+        }
+    </script>
+
+    <style>
+        .meta-field {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: var(--radius-sm);
+            padding: 0.75rem 1rem;
+        }
+        .meta-value {
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            margin-top: 0.2rem;
+            word-break: break-all;
+        }
+        @keyframes pulseSuccess {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            100% { box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); }
+        }
+    </style>
+</body>
+</html>

@@ -1,0 +1,19 @@
+# Cache y archivos temporales de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Archivos de entorno virtual
+venv/
+env/
+ENV/
+
+# CLAVES CRIPTOGRÁFICAS (¡Crucial para la seguridad informática!)
+# Las claves privadas nunca deben subirse al repositorio público de GitHub
+private_key.pem
+public_key.pem
+
+# Registro local de firmas
+registry.json
