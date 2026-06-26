@@ -2,3 +2,4 @@ flask
 cryptography
 qrcode
 pillow
+gunicorn
